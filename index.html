@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>From DNA to Protein — Protein Synthesis (NYSSLS HS-LS1-1)</title>
+<title>From DNA to Protein — Protein Synthesis</title>
 <style>
   html,body{margin:0;height:100%;background:#050a18;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
@@ -41,6 +41,11 @@ function rr(x, y, w, h, r){
   ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
+function rrAdd(x, y, w, h, r){
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
 function circ(x, y, r){ ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
 function wrapText(text, x, y, maxW, lh){
   const words = text.split(' '); let line = '', yy = y;
@@ -72,7 +77,8 @@ const mseq = () => MRNA[mutated ? 'm' : 'n'];
 /* ---------- steps (each keypress = one new word) ---------- */
 const STEPS = [
   { k: '', dur: 0, t: 'Press SPACE, the right arrow, or click to begin. Each press reveals the next idea.' },
-  { k: 'DNA', dur: 1600, t: 'Every cell keeps DNA in its nucleus. DNA is a double strand built from four bases: A, T, G, and C.' },
+  { k: 'Chromosome', dur: 2000, t: 'Inside the nucleus, DNA is packed into chromosomes. Each chromosome holds hundreds to thousands of genes. One gene is marked in yellow.' },
+  { k: 'DNA', dur: 3400, t: 'Zoom in on the chromosome: it is one long DNA molecule, tightly coiled. DNA is a double strand built from four bases: A, T, G, and C.' },
   { k: 'Gene', dur: 1500, t: 'A gene is one section of DNA. The order of its bases is a code: the instructions for building one protein.',
     m: 'MUTATION: one base in this gene has changed (circled). Keep pressing to see where that change ends up.' },
   { k: 'Transcription', dur: 5200, t: 'The DNA unzips at the gene, and its code is copied into RNA. Bases pair up: A–U, T–A, G–C, C–G.',
@@ -94,7 +100,7 @@ const STEPS = [
     m: 'A change in DNA can change the protein, and that can change the trait. Press M to return to the original gene.' }
 ];
 
-let step = 0, t0 = performance.now(), kwT = performance.now(), mutated = false, labels = true, flashT = -1e9;
+let step = 0, t0 = performance.now(), kwT = performance.now(), mutated = false, labels = false, flashT = -1e9;
 function go(s, instant){
   step = clamp(s, 0, STEPS.length - 1);
   t0 = instant ? -1e9 : performance.now();
@@ -109,7 +115,7 @@ addEventListener('keydown', e => {
   const k = e.key;
   if (k === ' ' || k === 'ArrowRight' || k === 'Enter' || k === 'PageDown' || k === 'ArrowDown'){ e.preventDefault(); next(); }
   else if (k === 'ArrowLeft' || k === 'Backspace' || k === 'PageUp' || k === 'ArrowUp'){ e.preventDefault(); go(step - 1, true); }
-  else if (k === 'm' || k === 'M'){ mutated = !mutated; flashT = performance.now(); go(2); }
+  else if (k === 'm' || k === 'M'){ mutated = !mutated; flashT = performance.now(); go(3); }
   else if (k === 'l' || k === 'L'){ labels = !labels; }
   else if (k === 'r' || k === 'R'){ mutated = false; go(0, true); }
 });
@@ -127,6 +133,8 @@ const FOLD_N = [[-30, 14], [-6, 36], [24, 22], [32, -6]];
 const FOLD_M = [[-30, 16], [-8, 36], [14, -58], [32, 8]];
 const FL_T = { '-2': 'G', '-1': 'C', '15': 'A', '16': 'G' };
 const FL_B = { '-2': 'C', '-1': 'G', '15': 'T', '16': 'C' };
+const flT = i => FL_T[i] || 'GATCCGTA'[(i + 16) % 8];
+const flB = i => FL_B[i] || ({ A: 'T', T: 'A', G: 'C', C: 'G' })[flT(i)];
 const PART = [...Array(80)].map(() => ({ x: rand() * W, y: 90 + rand() * 540, r: .6 + rand() * 1.8, v: .2 + rand() * .7, ph: rand() * 6 }));
 
 /* ---------- primitives ---------- */
@@ -204,9 +212,7 @@ function tag(text, x, y, a, col = '#ffffff'){
 /* ---------- background & title ---------- */
 let NOW = 0;
 function background(now){
-  const g = ctx.createRadialGradient(780, 380, 40, 640, 380, 820);
-  g.addColorStop(0, '#14244d'); g.addColorStop(1, '#050a18');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0d1733'; ctx.fillRect(0, 0, W, H);
   for (const p of PART){
     const x = (p.x + now * .004 * p.v) % W, y = p.y + Math.sin(now * .0006 + p.ph) * 6;
     ctx.fillStyle = `rgba(160,190,255,${.08 + .07 * Math.sin(now * .001 + p.ph)})`;
@@ -225,18 +231,94 @@ function titleScreen(now){
     ctx.fillStyle = '#9775fa'; ctx.beginPath(); ctx.arc(x, y2, 5, 0, TAU); ctx.fill();
     ctx.restore();
   }
-  ctx.save(); ctx.textAlign = 'center';
-  const g = ctx.createLinearGradient(380, 0, 900, 0); g.addColorStop(0, '#ffd43b'); g.addColorStop(1, '#ff8cc6');
-  ctx.fillStyle = g; ctx.font = '800 66px system-ui,sans-serif'; ctx.fillText('From DNA to Protein', W / 2, 440);
-  ctx.fillStyle = '#e9ecef'; ctx.font = '24px system-ui,sans-serif';
-  ctx.fillText('How the structure of DNA determines the structure of proteins', W / 2, 486);
-  ctx.fillStyle = 'rgba(233,236,239,.6)'; ctx.font = '17px system-ui,sans-serif';
-  ctx.fillText('NYSSLS HS-LS1-1  ·  Life Science: Biology  ·  simplified model gene (15 bases)', W / 2, 520);
-  ctx.globalAlpha = .55 + .45 * Math.sin(now * .004);
-  ctx.fillStyle = '#ffd43b'; ctx.font = '600 20px system-ui,sans-serif';
-  ctx.fillText('Press SPACE to begin', W / 2, 572);
+  drawTitleText(now);
+}
+
+/* ---------- title text that reacts to the cursor ---------- */
+const TITLE_LINES = [
+  { t: 'From DNA to Protein', font: '800 66px system-ui,sans-serif', size: 66, y: 440, col: '#ffd43b' },
+  { t: 'How the structure of DNA determines the structure of proteins', font: '24px system-ui,sans-serif', size: 24, y: 486, col: '#e9ecef' },
+  { t: 'Simplified model gene (15 bases)', font: '17px system-ui,sans-serif', size: 17, y: 520, col: 'rgba(233,236,239,.6)' },
+  { t: 'Press SPACE to begin', font: '600 20px system-ui,sans-serif', size: 20, y: 572, col: '#ffd43b', pulse: true }
+];
+let TCH = null, tLast = 0;
+function layoutTitle(){
+  TCH = [];
+  ctx.save(); ctx.textAlign = 'left';
+  for (const L of TITLE_LINES){
+    ctx.font = L.font;
+    const total = ctx.measureText(L.t).width, x0 = W / 2 - total / 2;
+    for (let i = 0; i < L.t.length; i++){
+      const c = L.t[i], x = x0 + ctx.measureText(L.t.slice(0, i)).width, w = ctx.measureText(c).width;
+      if (c === ' ') continue;
+      TCH.push({ c, L, x, w, st: 'idle', dx: 0, dy: 0, rot: 0, vx: 0, vy: 0, vr: 0, t: 0, hold: 0, tr: 0, f: null });
+    }
+  }
   ctx.restore();
 }
+function kick(ch, now){
+  if (ch.st !== 'idle') return;
+  ch.t = now;
+  if (Math.random() < .5){            // knocked crooked
+    ch.st = 'tilt'; ch.tr = (Math.random() < .5 ? -1 : 1) * (.35 + Math.random() * .5);
+    ch.hold = 2200 + Math.random() * 1800;
+    ch.f = { dx: (Math.random() - .5) * 10, dy: 4 + Math.random() * 8 };
+  } else {                             // knocked loose and falls away
+    ch.st = 'fall'; ch.vx = (Math.random() - .5) * 220; ch.vy = -120 - Math.random() * 160; ch.vr = (Math.random() - .5) * 9;
+    ch.hold = 2400 + Math.random() * 1600;
+  }
+}
+function hoverSweep(x0, y0, x1, y1){
+  if (!TCH) layoutTitle();
+  const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6)), now = performance.now();
+  for (let k = 1; k <= n; k++){
+    const x = lerp(x0, x1, k / n), y = lerp(y0, y1, k / n);
+    for (const ch of TCH){
+      if (ch.st !== 'idle') continue;
+      const L = ch.L;
+      if (x >= ch.x - 3 && x <= ch.x + ch.w + 3 && y >= L.y - L.size * .85 && y <= L.y + L.size * .3) kick(ch, now);
+    }
+  }
+}
+function drawTitleText(now){
+  if (!TCH) layoutTitle();
+  const dt = Math.min(.05, (now - (tLast || now)) / 1000); tLast = now;
+  ctx.save(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  for (const ch of TCH){
+    const e = now - ch.t;
+    if (ch.st === 'tilt'){
+      const a = ease(clamp(e / 160));
+      ch.rot = ch.tr * a; ch.dx = ch.f.dx * a; ch.dy = ch.f.dy * a;
+      if (e > ch.hold) beginReturn(ch, now);
+    } else if (ch.st === 'fall'){
+      ch.vy += 1900 * dt; ch.dx += ch.vx * dt; ch.dy += ch.vy * dt; ch.rot += ch.vr * dt;
+      if (e > ch.hold) beginReturn(ch, now);
+    } else if (ch.st === 'return'){
+      const u = clamp((now - ch.t) / 900), k = 1 - easeOutBack(u);
+      ch.dx = ch.f.dx * k; ch.dy = ch.f.dy * k; ch.rot = ch.f.rot * k;
+      if (u >= 1){ ch.st = 'idle'; ch.dx = ch.dy = ch.rot = 0; }
+    }
+    const L = ch.L, cx = ch.x + ch.w / 2 + ch.dx, cy = L.y - L.size * .35 + ch.dy;
+    ctx.save();
+    ctx.globalAlpha = L.pulse ? .55 + .45 * Math.sin(now * .004) : 1;
+    ctx.fillStyle = L.col; ctx.font = L.font;
+    ctx.translate(cx, cy); ctx.rotate(ch.rot); ctx.fillText(ch.c, -ch.w / 2, L.size * .35);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function beginReturn(ch, now){
+  let r = ch.rot - Math.round(ch.rot / TAU) * TAU;   // unwind by the short way
+  ch.f = { dx: ch.dx, dy: ch.dy, rot: r };
+  ch.st = 'return'; ch.t = now;
+}
+let mouseP = null;
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+  if (step === 0) hoverSweep(mouseP ? mouseP.x : x, mouseP ? mouseP.y : y, x, y);
+  mouseP = { x, y };
+});
+cv.addEventListener('pointerleave', () => { mouseP = null; });
 
 /* ---------- top flow chart ---------- */
 const NODES = ['DNA', 'mRNA', 'Amino acids', 'Protein', 'Trait'];
@@ -244,8 +326,8 @@ const NODECOL = ['#b197fc', '#ff8cc6', '#69db7c', '#38d9a9', '#c084fc'];
 const ARROWS = ['transcription', 'translation', 'folding', 'function'];
 function topBar(V){
   const w = 150, h = 42, y = 24, gap = (W - 100 - 5 * w) / 4;
-  const lit = [V(1), V(4), V(9), V(10, .5, 1), V(12)];
-  const al = [V(3), V(7), V(10, 0, .5), V(11)];
+  const lit = [V(2), V(5), V(10), V(11, .5, 1), V(13)];
+  const al = [V(4), V(8), V(11, 0, .5), V(12)];
   ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (let i = 0; i < 5; i++){
     const x = 50 + i * (w + gap);
@@ -276,44 +358,144 @@ function topBar(V){
 }
 
 /* ---------- nucleus & DNA ---------- */
-function nucleus(a){
-  if (a <= 0) return;
-  ctx.save(); ctx.globalAlpha *= a;
-  const g = ctx.createRadialGradient(300, 330, 20, 330, 380, 300);
-  g.addColorStop(0, 'rgba(130,100,230,.32)'); g.addColorStop(1, 'rgba(60,40,140,.12)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(330, 380, 280, 230, 0, 0, TAU); ctx.fill();
-  const pores = [0.402, -0.95, 2.3, 3.5, -2.2, 1.5].map(p => (p + TAU) % TAU).sort((a, b) => a - b);
-  const gapOf = p => Math.abs(p - 0.402) < .01 ? .12 : .06;
-  for (const [rx, ry] of [[280, 230], [270, 220]]){
-    ctx.strokeStyle = 'rgba(190,170,255,.8)'; ctx.lineWidth = 3;
-    for (let k = 0; k < pores.length; k++){
-      const p1 = pores[k], p2 = pores[(k + 1) % pores.length] + (k === pores.length - 1 ? TAU : 0);
-      ctx.beginPath(); ctx.ellipse(330, 380, rx, ry, 0, p1 + gapOf(p1), p2 - gapOf(pores[(k + 1) % pores.length])); ctx.stroke();
+function zoomXf(z){
+  return { k: Math.pow(18, z), tx: lerp(BAND.x, 330, z), ty: lerp(BAND.y, 297, z), rot: -ROT * z };
+}
+function applyZoom(Z){ ctx.translate(Z.tx, Z.ty); ctx.scale(Z.k, Z.k); ctx.rotate(Z.rot); ctx.translate(-BAND.x, -BAND.y); }
+function envelope(cx, cy, rx, ry, pores, lw){
+  ctx.fillStyle = '#231f5c'; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU); ctx.fill();
+  const ps = pores.map(([p, g]) => [(p + TAU) % TAU, g / rx]).sort((a, b) => a[0] - b[0]);
+  ctx.strokeStyle = '#bea9ff'; ctx.lineWidth = lw;
+  for (const d of [0, 10]){
+    for (let k = 0; k < ps.length; k++){
+      const [p1, g1] = ps[k], [p2r, g2] = ps[(k + 1) % ps.length], p2 = p2r + (k === ps.length - 1 ? TAU : 0);
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx - d, ry - d, 0, p1 + g1, p2 - g2); ctx.stroke();
     }
   }
+}
+// whole nucleus (chromosome view)
+const SMALL_PORES = [[0.402, 34], [-0.95, 17], [2.3, 17], [3.5, 17], [-2.2, 17], [1.5, 17]];
+// close-up of the nuclear envelope: a huge ellipse whose right edge crosses the screen at x≈590
+const BIG = { cx: -2400, cy: 470, rx: 2990, ry: 2600 };
+const BIG_PORES = [[0, 34], [-0.085, 17], [0.055, 17], [-0.16, 17]];
+function nucleus(V){
+  const a = V(1, 0, .5); if (a <= 0) return;
+  const z = V(2, 0, .6);
+  const aSmall = a * (1 - seg(z, .45, .75)), aBig = seg(z, .5, .85);
+  if (aSmall > 0){
+    const Z = zoomXf(z);
+    ctx.save(); ctx.globalAlpha *= aSmall; applyZoom(Z);
+    envelope(330, 380, 280, 230, SMALL_PORES, 3 / Z.k);
+    ctx.restore();
+  }
+  if (aBig > 0){
+    ctx.save(); ctx.globalAlpha *= aBig;
+    envelope(BIG.cx, BIG.cy, BIG.rx, BIG.ry, BIG_PORES, 3);
+    ctx.restore();
+  }
+}
+// small "you are here" map shown after zooming in
+function zoomMap(a){
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a; ctx.translate(0, -382);
+  ctx.fillStyle = '#0a1128'; ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 1.5;
+  rr(1080, 470, 180, 128, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 12px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('whole cell', 1092, 486);
+  ctx.strokeStyle = '#a5d8ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(1170, 540, 74, 44, 0, 0, TAU); ctx.stroke();
+  ctx.fillStyle = '#231f5c'; ctx.strokeStyle = '#bea9ff'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(1150, 542, 26, 20, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#9775fa'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(1140, 534); ctx.lineTo(1152, 550); ctx.moveTo(1152, 534); ctx.lineTo(1140, 550); ctx.stroke();
+  ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2; ctx.strokeRect(1168, 538, 9, 9);
+  ctx.fillStyle = '#ffe066'; ctx.font = '600 11px system-ui,sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText('you are here (greatly magnified)', 1254, 591);
   ctx.restore();
 }
+/* ---------- chromosomes & zoom ---------- */
+const CM = { x: 300, y: 375 };                  // centromere of the featured chromosome
+const BAND_Y = 85, ROT = .14;
+const BAND = { x: CM.x - 18 - Math.sin(ROT) * BAND_Y, y: CM.y + Math.cos(ROT) * BAND_Y }; // gene band on left chromatid
+const OTHERS = [
+  { x: 150, y: 300, r: .7, s: .55, col: '#748ffc' },
+  { x: 470, y: 260, r: -.5, s: .5, col: '#f783ac' },
+  { x: 470, y: 500, r: 1.25, s: .6, col: '#63e6be' },
+  { x: 105, y: 395, r: -.25, s: .42, col: '#ffa94d' }
+];
+function chromatid(dx, rot, col, gene){
+  ctx.save(); ctx.translate(dx, 0); ctx.rotate(rot);
+  // shape: two arms pinched at the centromere
+  ctx.beginPath(); rrAdd(-17, -105, 34, 102, 17); rrAdd(-17, -3, 34, 140, 17);
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = col; ctx.fillRect(-20, -110, 40, 250);
+  // coiled-DNA texture
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.4;
+  for (let y = -104; y < 138; y += 5){
+    ctx.beginPath();
+    for (let x = -18; x <= 18; x += 2){ const yy = y + Math.sin(x * .35 + y * .7) * 2; x === -18 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+    ctx.stroke();
+  }
+  // bands
+  ctx.fillStyle = 'rgba(10,10,40,.35)';
+  for (const [y, h] of [[-80, 10], [-45, 7], [-20, 6], [30, 9], [55, 6], [110, 10]]) ctx.fillRect(-20, y, 40, h);
+  if (gene){ ctx.fillStyle = 'rgba(255,224,102,.95)'; ctx.fillRect(-20, BAND_Y - 5, 40, 10); }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+  ctx.beginPath(); rr(-17, -105, 34, 102, 17); ctx.stroke(); ctx.beginPath(); rr(-17, -3, 34, 140, 17); ctx.stroke();
+  ctx.restore();
+}
+function chromosomeX(x, y, rot, sc, col, gene){
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sc, sc);
+  chromatid(-18, ROT, col, gene); chromatid(18, -ROT, col, false);
+  ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(0, -2, 16, 8, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+function chromosomes(V){
+  const appear = V(1, .3, 1);
+  const z = V(2, 0, .6), fade = 1 - V(2, .4, .65);
+  const a = appear * fade; if (a <= 0) return;
+  const Z = zoomXf(z), k = Z.k, tx = Z.tx, ty = Z.ty;
+  ctx.save(); ctx.globalAlpha *= a;
+  applyZoom(Z);
+  ctx.beginPath(); ctx.ellipse(330, 380, 268, 218, 0, 0, TAU); ctx.clip();
+  for (const o of OTHERS){ ctx.save(); ctx.globalAlpha *= 1 - z * .8; chromosomeX(o.x, o.y, o.r, o.s, o.col, false); ctx.restore(); }
+  chromosomeX(CM.x, CM.y, 0, 1, '#9775fa', true);
+  ctx.restore();
+  // zoom frame around the gene band while zooming
+  const st = step;
+  if (st === 1) tag('chromosome', CM.x + 95, CM.y - 85, V(1, .5, 1), '#d0bfff');
+  if (st === 1) tag('gene', BAND.x + 112, BAND.y + 8, V(1, .6, 1), '#ffe066');
+  if (st === 2){
+    const za = 1 - seg(z, .15, .45);
+    if (za > 0){
+      const w = 54 * k, h = 22 * k;
+      ctx.save(); ctx.globalAlpha = za * .9; ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+      rr(tx - w / 2, ty - h / 2, w, h, 10); ctx.stroke(); ctx.restore();
+      tag('zooming in…', 330, 560, Math.sin(clamp(z) * Math.PI), '#ffe066');
+    }
+  }
+}
 function dna(V){
-  const show = V(1, .3, 1); if (show <= 0) return;
-  const unz = V(3, 0, .2) - V(4, .35, .55), sep = 26 + 44 * unz;
-  const LA = V(2, .3, 1);
+  const show = V(2, .5, .9); if (show <= 0) return;
+  const unz = V(4, 0, .2) - V(5, .35, .55), sep = 26 + 44 * unz;
+  const LA = V(3, .3, 1);
   const tpl = TEMPLATE[mutated ? 'm' : 'n'], cod = CODING[mutated ? 'm' : 'n'];
   const inGene = i => i >= 0 && i < 15;
   const yT = i => inGene(i) ? 297 - sep : 271, yB = i => inGene(i) ? 297 + sep : 323;
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 40 + show * 620, H); ctx.clip();
+  ctx.save(); ctx.globalAlpha *= show;
   // gene highlight
-  const g = V(2, 0, .4);
+  const g = V(3, 0, .4);
   if (g > 0){
     ctx.save(); ctx.globalAlpha *= g * .9; ctx.fillStyle = 'rgba(255,230,140,.08)';
     rr(gx(0) - 4, 297 - sep - 8, 15 * 26 + 8, 2 * sep + 16, 10); ctx.fill(); ctx.restore();
   }
-  const idx = []; for (let i = -3; i <= 17; i++) idx.push(i);
+  const idx = []; for (let i = -7; i <= 15; i++) idx.push(i);
   backbone(idx.map(i => [gx(i) + 13, yT(i)]), '#b197fc');
   backbone(idx.map(i => [gx(i) + 13, yB(i)]), '#9775fa');
-  for (let i = -2; i <= 16; i++){
+  for (let i = -6; i <= 15; i++){
     const gi = inGene(i);
-    drawBase(gx(i), yT(i), 1, gi ? tpl[i] : FL_T[i], gi ? 1 : .5, gi ? LA : 0, mutated && i === MUT_I && LA > 0);
-    drawBase(gx(i), yB(i), -1, gi ? cod[i] : FL_B[i], gi ? 1 : .5, gi ? LA : 0, mutated && i === MUT_I && LA > 0);
+    drawBase(gx(i), yT(i), 1, gi ? tpl[i] : flT(i), gi ? 1 : .5, gi ? LA : 0, mutated && i === MUT_I && LA > 0);
+    drawBase(gx(i), yB(i), -1, gi ? cod[i] : flB(i), gi ? 1 : .5, gi ? LA : 0, mutated && i === MUT_I && LA > 0);
   }
   ctx.restore();
   // gene bracket
@@ -324,24 +506,23 @@ function dna(V){
     ctx.restore();
     tag('gene', GX + 195, by - 14, g, '#ffe066');
   }
-  tag('DNA', 98, 250, V(1, .6, 1) * (step <= 4 ? 1 : .0), '#d0bfff');
+  tag('DNA', 98, 250, V(2, .6, 1) * (step <= 5 ? 1 : .0), '#d0bfff');
 }
 
 /* ---------- mRNA ---------- */
 function drawMRNA(V, s, p){
-  if (s < 3) return null;
+  if (s < 4) return null;
   const seq = mseq();
-  const nb = s === 3 ? V(3, .22, .95) * 15 : 15;
-  const a = V(4, 0, .3), b = V(4, .45, 1);
+  const nb = s === 4 ? V(4, .22, .95) * 15 : 15;
+  const a = V(5, 0, .3), b = V(5, .45, 1);
   const x0 = lerp(GX, MX0, b), y = lerp(277, MY, a);
   const vis = Math.min(15, Math.ceil(nb)), pts = [];
   for (let i = 0; i < vis; i++) pts.push([x0 + 26 * i + 13, y]);
   backbone(pts, '#ff8cc6');
   for (let i = 0; i < 15; i++) drawBase(x0 + 26 * i, y, -1, seq[i], clamp(nb - i), 1, mutated && i === MUT_I);
-  if (s === 3 && p > .22 && p < .97){
-    const cx = GX + nb * 26, g = ctx.createRadialGradient(cx, 262, 2, cx, 262, 42);
-    g.addColorStop(0, 'rgba(255,240,180,.6)'); g.addColorStop(1, 'rgba(255,240,180,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, 262, 42, 0, TAU); ctx.fill();
+  if (s === 4 && p > .22 && p < .97){
+    const cx = GX + nb * 26;
+    ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, 262, 20, 0, TAU); ctx.stroke();
   }
   return { x0, y };
 }
@@ -408,8 +589,7 @@ function ribosome(X, a, split, part){
   ctx.save(); ctx.globalAlpha *= a;
   if (part === 'small'){
     const y = 505 + 30 * split;
-    const g = ctx.createLinearGradient(0, y - 34, 0, y + 34); g.addColorStop(0, '#66d9e8'); g.addColorStop(1, '#1098ad');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(X, y, 100, 34, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3bc9db'; ctx.beginPath(); ctx.ellipse(X, y, 100, 34, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#c5f6fa'; ctx.lineWidth = 2; ctx.stroke();
   } else {
     const y = 386 - 40 * split;
@@ -437,9 +617,7 @@ function drawBlob(cx, cy, sc, mut, a){
     ctx[k ? 'lineTo' : 'moveTo'](cx + Math.cos(th) * r, cy + Math.sin(th) * r);
   }
   ctx.closePath();
-  const g = ctx.createRadialGradient(cx - 20 * sc, cy - 10 * sc, 5, cx, cy, 85 * sc);
-  g.addColorStop(0, '#63e6be'); g.addColorStop(1, '#087f5b');
-  ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = '#20c997'; ctx.fill();
   ctx.strokeStyle = '#c3fae8'; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.clip();
   ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 4 * sc; ctx.lineJoin = 'round';
@@ -456,7 +634,7 @@ function drawBlob(cx, cy, sc, mut, a){
 function cellScene(now, p, V){
   const s = step;
   // drifting free amino acids in the cytoplasm (decoration)
-  const fa = V(5) * .16;
+  const fa = V(6) * .16;
   if (fa > 0){
     const nm = ['Met', 'Pro', 'Glu', 'Lys', 'Val'];
     for (let k = 0; k < 9; k++){
@@ -464,20 +642,22 @@ function cellScene(now, p, V){
       drawAA(nm[k % 5], x, y, 6, fa, false);
     }
   }
-  nucleus(V(1, 0, .5));
+  nucleus(V);
+  zoomMap(V(2, .7, 1) * (1 - V(12, 0, .3)));
   tag('Nucleus', 175, 500, V(1, .5, 1), '#d0bfff');
-  tag('Cytoplasm', 1170, 112, V(1, .5, 1), '#a5d8ff');
+  tag('Cytoplasm', 700, 112, V(1, .5, 1), '#a5d8ff');
+  chromosomes(V);
   dna(V);
 
   // translation state
   let u = 0;
-  if (s === 7) u = .6 * p; else if (s === 8) u = .6 + 1.4 * p; else if (s === 9) u = 2 + 3 * p; else if (s > 9) u = 5;
+  if (s === 8) u = .6 * p; else if (s === 9) u = .6 + 1.4 * p; else if (s === 10) u = 2 + 3 * p; else if (s > 10) u = 5;
   const T = trans(u);
-  const a5 = V(5), X = MX0 + 78 * T.r + 78, ribA = a5 * (1 - T.split);
+  const a5 = V(6), X = MX0 + 78 * T.r + 78, ribA = a5 * (1 - T.split);
   const asm = 1 - a5;
 
   // codon key under the codons
-  const keyA = V(6, .4, 1) * (1 - V(10, 0, .4));
+  const keyA = V(7, .4, 1) * (1 - V(11, 0, .4));
   if (keyA > 0){
     ctx.save(); ctx.globalAlpha *= keyA;
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '600 13px system-ui,sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
@@ -499,7 +679,7 @@ function cellScene(now, p, V){
   ctx.save(); ctx.translate(0, -60 * asm); ribosome(X, ribA, T.split, 'largeFill'); ctx.restore();
 
   // codon tints
-  const ct = V(6, 0, .6) * (1 - V(10, 0, .4));
+  const ct = V(7, 0, .6) * (1 - V(11, 0, .4));
   if (ct > 0){
     for (let c = 0; c < 5; c++){
       ctx.save(); ctx.globalAlpha *= ct;
@@ -513,27 +693,27 @@ function cellScene(now, p, V){
   ctx.save(); ctx.translate(0, -60 * asm); ribosome(X, ribA, T.split, 'largeLine'); ctx.restore();
 
   // tRNAs and the growing chain
-  if (s >= 7 && s <= 9){
+  if (s >= 8 && s <= 10){
     T.tr.forEach(drawTRNA);
     drawChain(T.pts, aaNames(), 13, T.bonds);
     if (T.stop > 0) tag('STOP codon', cxCodon(4), 418, T.stop, '#ff6b6b');
   }
-  if (s === 10){
-    const f = V(10), fb = V(10, .35, 1);
+  if (s === 11){
+    const f = V(11), fb = V(11, .35, 1);
     const F = mutated ? FOLD_M : FOLD_N, sc = lerp(.6, 1, fb);
     drawBlob(C.x, C.y, sc, mutated, fb);
     const pts = RELEASED.map((r0, k) => ({ x: lerp(r0.x, C.x + F[k][0], f), y: lerp(r0.y, C.y + F[k][1], f) }));
     drawChain(pts, aaNames(), lerp(13, 11, f));
-    tag('protein', C.x, C.y + 92, V(10, .6, 1), '#96f2d7');
+    tag('protein', C.x, C.y + 92, V(11, .6, 1), '#96f2d7');
   }
 
   // labels
-  if (mp && s >= 3 && s <= 5) tag('mRNA', mp.x0 + 195, mp.y + 24, s === 3 ? V(3, .6, .9) : 1, '#ff8cc6');
-  if (s === 4) tag('nuclear pore', 600, 512, seg(p, .3, .45) * (1 - seg(p, .9, 1)), '#d0bfff');
-  if (s >= 5 && s <= 8) tag('ribosome', X + 140, 395, a5, '#99e9f2');
-  if (s === 6) tag('codon', cxCodon(0), 416, V(6, .2, .6), '#ffffff');
-  if (s === 7){ const t0r = T.tr.find(o => o.j === 0); if (t0r) tag('tRNA', t0r.x - 82, 380 + t0r.dy, V(7, .3, .8), '#ffe066'); }
-  if (s === 8 && T.pts.length){ const q = T.pts[T.pts.length - 1]; tag('amino acid', q.x - 92, q.y - 4, V(8, .2, .5) * (q.a ?? 1), '#69db7c'); }
+  if (mp && s >= 4 && s <= 6) tag('mRNA', mp.x0 + 195, mp.y + 24, s === 4 ? V(4, .6, .9) : 1, '#ff8cc6');
+  if (s === 5) tag('nuclear pore', 600, 512, seg(p, .3, .45) * (1 - seg(p, .9, 1)), '#d0bfff');
+  if (s >= 6 && s <= 9) tag('ribosome', X + 140, 395, a5, '#99e9f2');
+  if (s === 7) tag('codon', cxCodon(0), 416, V(7, .2, .6), '#ffffff');
+  if (s === 8){ const t0r = T.tr.find(o => o.j === 0); if (t0r) tag('tRNA', t0r.x - 82, 380 + t0r.dy, V(8, .3, .8), '#ffe066'); }
+  if (s === 9 && T.pts.length){ const q = T.pts[T.pts.length - 1]; tag('amino acid', q.x - 92, q.y - 4, V(9, .2, .5) * (q.a ?? 1), '#69db7c'); }
 }
 
 /* ---------- function panel (step 11+) ---------- */
@@ -546,18 +726,18 @@ const CHIPS = [
 ];
 function dockYFor(cy, sc){ return cy - (rAt(-Math.PI / 2, mutated) + 17) * sc; }
 function functionPanel(V){
-  const m = V(11, 0, .35), sc = lerp(1, 1.7, m), cx = lerp(C.x, 380, m), cy = lerp(C.y, 390, m);
+  const m = V(12, 0, .35), sc = lerp(1, 1.7, m), cx = lerp(C.x, 380, m), cy = lerp(C.y, 390, m);
   drawBlob(cx, cy, sc, mutated, 1);
   const F = mutated ? FOLD_M : FOLD_N;
   drawChain(F.map(([dx, dy]) => ({ x: cx + dx * sc, y: cy + dy * sc })), aaNames(), 11 * sc);
-  tag('enzyme (a protein)', cx, cy + (rAt(Math.PI / 2, mutated) + 24) * sc, V(11, .3, .6), '#96f2d7');
+  tag('enzyme (a protein)', cx, cy + (rAt(Math.PI / 2, mutated) + 24) * sc, V(12, .3, .6), '#96f2d7');
 
   const tr = 17 * sc, dockY = dockYFor(cy, sc);
-  let tx = cx, ty, ta = V(11, .3, .42), col = '#ffd43b', glow = 0;
+  let tx = cx, ty, ta = V(12, .3, .42), col = '#ffd43b', glow = 0;
   if (!mutated){
-    ty = lerp(140, dockY, V(11, .35, .7)); const c = V(11, .7, 1); col = mix('#ffd43b', '#9b5de5', c); glow = c;
+    ty = lerp(140, dockY, V(12, .35, .7)); const c = V(12, .7, 1); col = mix('#ffd43b', '#9b5de5', c); glow = c;
   } else {
-    const t1 = V(11, .35, .6), t2 = V(11, .6, 1);
+    const t1 = V(12, .35, .6), t2 = V(12, .6, 1);
     ty = lerp(140, dockY, t1) - 110 * t2; tx = cx + 150 * t2; ta *= 1 - .5 * t2;
   }
   if (ta > 0){
@@ -576,7 +756,7 @@ function functionPanel(V){
     tag(glow > .5 ? 'pigment made!' : 'target molecule', tx + tr + 75, ty, ta, glow > .5 ? '#d0a3ff' : '#ffe066');
   }
   if (mutated){
-    const xa = V(11, .62, .85);
+    const xa = V(12, .62, .85);
     if (xa > 0){
       const xx = cx, yy = dockY + 6;
       ctx.save(); ctx.globalAlpha = xa; ctx.strokeStyle = '#ff2d55'; ctx.lineWidth = 7; ctx.lineCap = 'round';
@@ -586,7 +766,7 @@ function functionPanel(V){
     }
   }
   // the many jobs of proteins
-  const ca = V(11, .15, .75) * (1 - V(12, 0, .3));
+  const ca = V(12, .15, .75) * (1 - V(13, 0, .3));
   if (ca > 0){
     ctx.save(); ctx.globalAlpha = ca;
     ctx.fillStyle = '#fff'; ctx.font = '700 22px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -634,9 +814,9 @@ function flower(bx, g, pt, petal){
   ctx.restore();
 }
 function traitPanel(V){
-  const bx = 990, g = V(12, 0, .55), pt = V(12, .35, .8), colT = V(12, .5, 1);
+  const bx = 990, g = V(13, 0, .55), pt = V(13, .35, .8), colT = V(13, .5, 1);
   if (!mutated){
-    const f = V(12, 0, .75), sy = dockYFor(390, 1.7);
+    const f = V(13, 0, .75), sy = dockYFor(390, 1.7);
     for (let i = 0; i < 24; i++){
       const lt = clamp(f * 1.5 - i * .022); if (lt <= 0 || lt >= 1) continue;
       const q = 1 - lt, x = q * q * 380 + 2 * q * lt * 720 + lt * lt * bx, y = q * q * sy + 2 * q * lt * 110 + lt * lt * 345;
@@ -646,7 +826,7 @@ function traitPanel(V){
     }
   }
   flower(bx, g, pt, mutated ? '#f1f3f5' : mix('#f1f3f5', '#9b5de5', colT));
-  const la = V(12, .6, 1);
+  const la = V(13, .6, 1);
   tag('TRAIT', bx, 258, la, '#e599f7');
   if (la > 0){
     ctx.save(); ctx.globalAlpha = la; ctx.textAlign = 'left';
@@ -660,7 +840,7 @@ function traitPanel(V){
 
 /* ---------- summary (step 13) ---------- */
 function summary(V){
-  const a = V(13, 0, .4), a2 = V(13, .45, 1);
+  const a = V(14, 0, .4), a2 = V(14, .45, 1);
   ctx.save(); ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(7,12,30,.95)'; ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 2;
   rr(70, 104, 1140, 506, 24); ctx.fill(); ctx.stroke();
@@ -687,7 +867,7 @@ function summary(V){
     });
   };
   row(232, [['DNA gene', 'base sequence'], ['mRNA', 'codons'], ['Amino acid', 'chain'], ['Protein', 'shape'], ['Protein', 'function'], ['Trait', '']],
-      ['#b197fc', '#ff8cc6', '#69db7c', '#38d9a9', '#38d9a9', '#c084fc'], V(13, .1, .7),
+      ['#b197fc', '#ff8cc6', '#69db7c', '#38d9a9', '#38d9a9', '#c084fc'], V(14, .1, .7),
       ['transcription', 'translation', 'folding', 'determines', 'produces']);
   ctx.globalAlpha = a * a2; ctx.fillStyle = mutated ? '#ff8fa3' : '#ffc9c9'; ctx.font = '700 20px system-ui,sans-serif';
   ctx.fillText('What if one DNA base changes?', W / 2, 380);
@@ -695,7 +875,7 @@ function summary(V){
   row(410, [['Changed', 'DNA base'], ['Changed', 'codon'], ['Different', 'amino acid'], ['Different', 'shape'], ["Can't do", 'its job'], ['Different', 'trait']],
       red, a2, null);
   ctx.globalAlpha = a * a2; ctx.fillStyle = 'rgba(233,236,239,.6)'; ctx.font = '15px system-ui,sans-serif';
-  ctx.fillText('NYSSLS HS-LS1-1: the structure of DNA determines the structure of proteins, which carry out the essential functions of life.', W / 2, 545);
+  ctx.fillText('The structure of DNA determines the structure of proteins, which carry out the essential functions of life.', W / 2, 545);
   ctx.fillText('Not every base change alters the protein, but when the amino acid sequence changes, the shape and function can change.', W / 2, 570);
   ctx.restore();
 }
@@ -703,28 +883,40 @@ function summary(V){
 /* ---------- caption & badges ---------- */
 function caption(now){
   const st = STEPS[step];
-  const g = ctx.createLinearGradient(0, 604, 0, 636);
-  g.addColorStop(0, 'rgba(5,9,22,0)'); g.addColorStop(1, 'rgba(5,9,22,.96)');
-  ctx.fillStyle = g; ctx.fillRect(0, 604, W, 32);
-  ctx.fillStyle = 'rgba(5,9,22,.96)'; ctx.fillRect(0, 636, W, 84);
+  ctx.fillStyle = '#060b1c'; ctx.fillRect(0, 630, W, 90);
   ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(40, 636, W - 80, 1);
   if (st.k){
     const t = clamp((now - kwT) / 520), sc = t < 1 ? .4 + .6 * easeOutBack(t) : 1;
     ctx.save(); ctx.translate(40, 676); ctx.scale(sc, sc);
     let fs = 46; ctx.font = `800 ${fs}px system-ui,sans-serif`;
     while (ctx.measureText(st.k).width > 315 && fs > 24){ fs -= 2; ctx.font = `800 ${fs}px system-ui,sans-serif`; }
-    const gg = ctx.createLinearGradient(0, 0, 315, 0); gg.addColorStop(0, '#ffd43b'); gg.addColorStop(1, '#ff8cc6');
-    ctx.fillStyle = gg; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.globalAlpha = clamp(t * 2);
+    ctx.fillStyle = '#ffd43b'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.globalAlpha = clamp(t * 2);
     ctx.fillText(st.k, 0, 0); ctx.restore();
   }
   ctx.save(); ctx.globalAlpha = clamp((now - kwT) / 450);
   ctx.fillStyle = '#e9ecef'; ctx.font = '20px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  wrapText((mutated && st.m) ? st.m : st.t, 380, 664, 860, 27);
+  wrapText((mutated && st.m) ? st.m : st.t, 380, 658, 860, 26);
   ctx.restore();
   ctx.save(); ctx.font = '13px system-ui,sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.42)'; ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left'; ctx.fillText(`${step} / ${STEPS.length - 1}`, 40, 712);
-  ctx.textAlign = 'right';
-  ctx.fillText('SPACE / → next    ← back    M mutation    L labels ' + (labels ? 'on' : 'off') + '    R restart', W - 40, 712);
+  ctx.restore();
+  // keyboard shortcuts on an opaque bar
+  const keys = [['SPACE / →', 'next'], ['←', 'back'], ['M', 'mutation'], ['L', 'labels ' + (labels ? 'on' : 'off')], ['R', 'restart']];
+  ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const kf = '700 12px system-ui,sans-serif', lf = '13px system-ui,sans-serif';
+  const parts = keys.map(([k, l]) => { ctx.font = kf; const kw = ctx.measureText(k).width + 12; ctx.font = lf; const lw = ctx.measureText(l).width; return { k, l, kw, lw }; });
+  const total = parts.reduce((a, q) => a + q.kw + 6 + q.lw + 16, 0) + 4;
+  const bx = W - 30 - total, by = 694, bh = 24;
+  ctx.fillStyle = '#1b2445'; ctx.strokeStyle = '#4a5a8c'; ctx.lineWidth = 1.5;
+  ctx.fillRect(bx, by, total, bh); ctx.strokeRect(bx, by, total, bh);
+  let x = bx + 10; const cy = by + bh / 2;
+  for (const q of parts){
+    ctx.fillStyle = '#e9ecef'; ctx.fillRect(x, cy - 8, q.kw, 16);
+    ctx.fillStyle = '#0d1733'; ctx.font = kf; ctx.fillText(q.k, x + 6, cy + 1);
+    x += q.kw + 6;
+    ctx.fillStyle = '#e9ecef'; ctx.font = lf; ctx.fillText(q.l, x, cy + 1);
+    x += q.lw + 16;
+  }
   ctx.restore();
 }
 function badges(now){
@@ -754,11 +946,11 @@ function frame(now){
   const V = (k, a = 0, b = 1) => s < k ? 0 : s > k ? 1 : seg(p, a, b);
   background(now);
   if (s === 0) titleScreen(now);
-  const dim = 1 - .75 * V(11, 0, .3);
+  const dim = 1 - .75 * V(12, 0, .3);
   ctx.save(); ctx.globalAlpha = dim; cellScene(now, p, V); ctx.restore();
-  if (s >= 11) functionPanel(V);
-  if (s >= 12) traitPanel(V);
-  if (s >= 13) summary(V);
+  if (s >= 12) functionPanel(V);
+  if (s >= 13) traitPanel(V);
+  if (s >= 14) summary(V);
   topBar(V);
   caption(now);
   badges(now);
