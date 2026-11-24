@@ -219,18 +219,54 @@ function background(now){
     ctx.beginPath(); ctx.arc(x, y, p.r, 0, TAU); ctx.fill();
   }
 }
-function titleScreen(now){
-  const bases = 'ATGCCTGAGAAGTAAGCTAGCATGCATCGATCGTAGCTAG';
-  for (let i = 0; i < 40; i++){
-    const x = 150 + i * 25, ph = now * .0014 + i * .38;
-    const y1 = 290 + Math.sin(ph) * 60, y2 = 290 - Math.sin(ph) * 60, depth = (Math.cos(ph) + 1) / 2;
-    ctx.save(); ctx.globalAlpha = .25 + .45 * depth;
-    ctx.strokeStyle = BASECOL[bases[i]]; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
-    ctx.fillStyle = '#b197fc'; ctx.beginPath(); ctx.arc(x, y1, 5, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#9775fa'; ctx.beginPath(); ctx.arc(x, y2, 5, 0, TAU); ctx.fill();
-    ctx.restore();
+/* ---------- opening-screen double helix ---------- */
+const HX0 = 90, HX1 = 1190, HR = 66, HCY = 268, HPER = 240, HSTEP = 22;
+const HDEL = 2.45;   // the two backbones are ~140° apart, not 180°: narrow minor groove on one side, wide major groove on the other
+const HSEQ = 'ATGCCTGAGAAGTAAGCTAGCATGCATCGATCGTAGCTAGGATCCATGAGTCCAGT';
+const HCOMP = { A: 'T', T: 'A', G: 'C', C: 'G' };
+function helixPhase(x, t){ return (x - HX0) / HPER * TAU + t; }
+function helixPass(t, front, fade){
+  ctx.lineCap = 'round';
+  for (const strand of [0, 1]){
+    const off = strand ? HDEL : 0, col = strand ? '#9775fa' : '#b197fc';
+    const dim = mix(col, '#0d1733', .55);
+    for (let x = HX0; x < HX1; x += 3){
+      const ph = helixPhase(x + 1.5, t) + off, d = Math.cos(ph);
+      if ((d >= 0) !== front) continue;
+      const y1 = HCY + HR * Math.sin(helixPhase(x, t) + off), y2 = HCY + HR * Math.sin(helixPhase(x + 3, t) + off);
+      ctx.globalAlpha = fade(x);
+      ctx.strokeStyle = front ? col : dim; ctx.lineWidth = front ? 9 : 6;
+      ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x + 3, y2); ctx.stroke();
+    }
+    // sugar-phosphate dots where each base pair attaches
+    for (let i = 0, x = HX0 + 12; x < HX1; i++, x += HSTEP){
+      const ph = helixPhase(x, t) + off, d = Math.cos(ph);
+      if ((d >= 0) !== front) continue;
+      ctx.globalAlpha = fade(x);
+      ctx.fillStyle = front ? col : dim;
+      ctx.beginPath(); ctx.arc(x, HCY + HR * Math.sin(ph), front ? 8 : 5.5, 0, TAU); ctx.fill();
+    }
   }
+}
+function drawHelix(now){
+  const t = now * .0016, fade = x => clamp(Math.min(x - HX0, HX1 - x) / 90);
+  ctx.save();
+  helixPass(t, false, fade);
+  // base-pair rungs, each colored half-and-half for its two bases
+  ctx.lineCap = 'butt'; ctx.lineWidth = 7;
+  for (let i = 0, x = HX0 + 12; x < HX1; i++, x += HSTEP){
+    const ph = helixPhase(x, t), yA = HCY + HR * Math.sin(ph), yB = HCY + HR * Math.sin(ph + HDEL), ym = (yA + yB) / 2;
+    const bA = HSEQ[i % HSEQ.length], bB = HCOMP[bA];
+    ctx.globalAlpha = fade(x);
+    ctx.strokeStyle = BASECOL[bA]; ctx.beginPath(); ctx.moveTo(x, yA); ctx.lineTo(x, ym); ctx.stroke();
+    ctx.strokeStyle = BASECOL[bB]; ctx.beginPath(); ctx.moveTo(x, ym); ctx.lineTo(x, yB); ctx.stroke();
+  }
+  helixPass(t, true, fade);
+  ctx.restore();
+}
+
+function titleScreen(now){
+  drawHelix(now);
   drawTitleText(now);
 }
 
